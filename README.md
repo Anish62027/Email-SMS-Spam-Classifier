@@ -1,134 +1,366 @@
-# Email-SMS-Spam-Classifier
+# Email/SMS Spam Classifier
 
-📧 Email/SMS Spam Classifier
-This project provides a web-based application built with Streamlit that classifies text messages (emails or SMS) as either "spam" or "not spam" (ham) using a machine learning model. It's designed to be an interactive tool for demonstration and understanding of text classification.
+A lightweight, demo-friendly **Streamlit web app** that classifies short text messages (emails or SMS) as **Spam** or **Ham (Not Spam)** using a **machine learning ensemble**. Ideal for learning text preprocessing, TF‑IDF vectorization, and model stacking in scikit-learn — with an interactive UI you can launch locally in minutes.
 
-✨ Features
-Real-time Classification: Instantly classify messages entered by the user.
+---
 
-Text Preprocessing: Includes robust text cleaning steps (lowercasing, tokenization, alphanumeric filtering, stopword removal, stemming).
+## ✨ Key Features
 
-TF-IDF Vectorization: Utilizes Term Frequency-Inverse Document Frequency for numerical feature extraction from text.
+* **Real-time Classification:** Type/paste a message and instantly see the prediction.
+* **Text Preprocessing Pipeline:** Lowercasing, tokenization, alphanumeric filtering, stopword removal, and Porter stemming.
+* **TF‑IDF Vectorization:** Converts cleaned text into numerical feature vectors.
+* **Ensemble Model (StackingClassifier):** Combines strengths of multiple base learners (SVC, MultinomialNB, ExtraTrees) with a meta RandomForest for robust performance.
+* **Interactive Streamlit UI:** Text area input, Predict & Clear buttons, and quick-load example Spam/Ham test messages.
+* **Confidence Scores:** Displays model probability for each class.
+* **Robustness:** Graceful handling of missing model/vectorizer files and automatic NLTK data download (stopwords, punkt) when needed.
 
-Ensemble Learning Model: Employs a powerful StackingClassifier for high accuracy.
+---
 
-Interactive GUI: User-friendly interface built with Streamlit, featuring:
+## 🖼️ App Preview
 
-Text input area.
+> *Add screenshots or a short GIF of the running app here.*
 
-Predict and Clear buttons.
+---
 
-Pre-defined example spam and ham messages for quick testing.
+## 📚 Table of Contents
 
-Clear display of prediction (Spam/Not Spam) and confidence scores.
+1. [Project Overview](#-project-overview)
+2. [How It Works](#️-how-it-works)
 
-Robustness: Includes error handling for missing model files and NLTK data downloads.
+   * [Preprocessing Steps](#preprocessing-steps)
+   * [Vectorization](#vectorization)
+   * [Sparse→Dense Conversion](#sparse→dense-conversion)
+   * [Model Architecture](#model-architecture)
+3. [Quick Start](#-quick-start)
 
-⚙️ How It Works
-The project follows a standard machine learning pipeline for text classification:
+   * [Prerequisites](#prerequisites)
+   * [Installation](#installation)
+   * [Download NLTK Data](#download-nltk-data)
+   * [Add Model Artifacts](#place-your-trained-models)
+   * [Run the App](#-run-the-application)
+4. [Usage Guide](#-usage)
+5. [Project Structure](#-project-structure)
+6. [Training Your Own Model](#-training-your-own-model-optional)
+7. [Troubleshooting](#-troubleshooting)
+8. [Extending the App](#-extending-the-app)
+9. [Contributing](#-contributing)
+10. [License](#-license)
+11. [Acknowledgements](#-acknowledgements)
 
-Data Preprocessing: Raw text input undergoes a series of cleaning steps:
+---
 
-Conversion to lowercase.
+## 📘 Project Overview
 
-Tokenization (splitting text into words).
+This project demonstrates a complete **text classification workflow** wrapped in a friendly **Streamlit interface**. Users can paste in email/SMS text and immediately see whether the message is likely spam. The project is designed for students, data science beginners, and educators who want:
 
-Removal of non-alphanumeric characters.
+* A clear example of an **NLP preprocessing + ML pipeline**.
+* A demonstration of **StackingClassifier ensembles** in scikit-learn.
+* A ready-to-run **interactive demo** for workshops, portfolio projects, or classroom use.
 
-Elimination of common English stopwords.
+---
 
-Stemming (reducing words to their root form using Porter Stemmer).
+## 🛠️ How It Works
 
-Feature Extraction (Vectorization): The preprocessed text is converted into a numerical format using a pre-trained TfidfVectorizer. This process transforms text into a sparse matrix representation, capturing word importance.
+At a high level, the app transforms raw text into numeric features and feeds them to a pre-trained ensemble classifier.
 
-Sparse to Dense Conversion: A crucial step where the sparse matrix output from TF-IDF is converted into a dense NumPy array. This is necessary because some internal components of the StackingClassifier (like SVC) expect dense input.
+### Preprocessing Steps
 
-Machine Learning Prediction: The numerical vector is fed into a pre-trained StackingClassifier model. This ensemble model combines predictions from multiple base classifiers (e.g., Support Vector Classifier, Multinomial Naive Bayes, Extra Trees Classifier) and uses a final estimator (e.g., RandomForestClassifier) to make the ultimate prediction.
+Each input message is processed using the following steps (order matters):
 
-Result Display: The model outputs a binary prediction (0 for ham, 1 for spam) and associated probabilities. The Streamlit app then displays this result clearly to the user.
+1. **Lowercase** the full string.
+2. **Tokenize** into word-like units.
+3. **Filter non-alphanumeric** tokens (keep words/numbers; drop punctuation & symbols).
+4. **Remove English stopwords** (e.g., "the", "and", "is").
+5. **Stemming** via NLTK's **PorterStemmer** (e.g., "running" → "run").
+6. **Rejoin** tokens or directly pass the cleaned token list to the vectorizer (depending on your implementation).
 
-🚀 Getting Started
-Follow these instructions to get a copy of the project up and running on your local machine.
+> *Note:* If you change preprocessing at training time, the **same function** must be applied at inference time for consistent results.
 
-Prerequisites
-Python 3.7+
+### Vectorization
 
-pip (Python package installer)
+We use **scikit-learn's `TfidfVectorizer`** trained on the project dataset. It converts preprocessed text into a sparse matrix where each column corresponds to a vocabulary term and values represent TF‑IDF weights.
 
-Installation
-Clone the repository:
+* Save the fitted vectorizer (e.g., `vectorizer.pkl`).
+* Load it in the app to transform new input text.
 
+### Sparse→Dense Conversion
+
+Some base estimators (notably `sklearn.svm.SVC` with certain kernels) expect **dense NumPy arrays** rather than sparse matrices. Because the StackingClassifier forwards data to its base learners, we convert the TF‑IDF sparse matrix to dense using `.toarray()` or `.A` before prediction.
+
+> *Performance Tip:* Dense conversion can increase memory usage for large vocabularies. For production systems, consider models that accept sparse input (e.g., linear models, MultinomialNB) or use dimensionality reduction.
+
+### Model Architecture
+
+A **StackingClassifier** combines multiple base models and learns how to weigh their predictions using a meta-learner. A typical configuration for this project:
+
+**Base Estimators**
+
+* `('svc', SVC(probability=True))`
+* `('mnb', MultinomialNB())`
+* `('ext', ExtraTreesClassifier(n_estimators=200, random_state=42))`
+
+**Final Estimator (Meta-model)**
+
+* `RandomForestClassifier(n_estimators=200, random_state=42)`
+
+**Workflow**
+
+1. Each base model predicts on the training data (often via cross-validated out-of-fold predictions in stacking to reduce leakage).
+2. These predictions become meta-features.
+3. The meta RandomForest learns to combine them into the final decision.
+
+---
+
+## 🚀 Quick Start
+
+Get up and running locally.
+
+### Prerequisites
+
+* Python **3.7+** (3.10+ recommended)
+* `pip`
+* Recommended: Virtual environment (`venv`, `conda`, `pipenv`, etc.)
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/Anish62027/Email-SMS-Spam-Classifier.git
 cd Email-SMS-Spam-Classifier
 
-(Replace https://github.com/Anish62027/Email-SMS-Spam-Classifier.git with your actual repository URL if it's different in the future)
-
-Create a virtual environment (recommended):
-
+# Create & activate virtual environment (choose one)
+# --- Windows PowerShell ---
 python -m venv venv
-# On Windows:
 .\venv\Scripts\activate
-# On macOS/Linux:
+
+# --- macOS / Linux ---
+python -m venv venv
 source venv/bin/activate
 
-Install the required Python packages:
-
+# Install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt  # if provided
+# or install core libs directly:
 pip install streamlit scikit-learn numpy nltk
+```
 
-Download NLTK data:
-The application will attempt to download stopwords and punkt automatically. If it fails or you prefer to do it manually, run:
+If you don't yet have a `requirements.txt`, create one like this:
 
+```txt
+streamlit
+scikit-learn
+numpy
+nltk
+```
+
+### Download NLTK Data
+
+The app attempts to download missing corpora at runtime, but you can pre-download:
+
+```bash
 python -m nltk.downloader stopwords punkt
+```
 
-Place your trained models:
-Ensure you have your trained vectorizer.pkl (TfidfVectorizer) and model.pkl (StackingClassifier) files in the root directory of the project. These files are essential for the application to run.
+### Place Your Trained Models
 
-🏃‍♀️ Running the Application
-Once the prerequisites are met and models are in place:
+You **must** have two pickled artifacts in the project root (same folder as `app.py`):
 
+* `vectorizer.pkl`  → Trained `TfidfVectorizer`.
+* `model.pkl`       → Trained `StackingClassifier` (or compatible model supporting `.predict()` and `.predict_proba()`).
+
+> *Tip:* See [Training Your Own Model](#-training-your-own-model-optional) if you need help creating these.
+
+### ▶ Run the Application
+
+```bash
 streamlit run app.py
+```
 
-This command will open the Streamlit application in your default web browser.
+Streamlit will print a local URL (typically `http://localhost:8501`) — open it in your browser.
 
-💡 Usage
-Enter Message: Type or paste any email or SMS content into the "Enter the message here:" text area.
+---
 
-Predict: Click the "Predict" button to classify the message.
+## 💡 Usage
 
-Clear Message: Click the "Clear Message" button to clear the text area.
+1. **Enter Message:** Paste or type any email/SMS in the text box.
+2. **Predict:** Click **Predict** to classify.
+3. **Clear:** Reset the input with **Clear Message**.
+4. **Example Buttons:** Quickly test with built-in **Spam Example** or **Ham Example** messages.
+5. **View Results:** The app displays:
 
-Load Examples: Use the "Load Spam Example" or "Load Ham Example" buttons to quickly populate the text area with pre-defined messages for testing.
+   * **Prediction:** `SPAM!` or `NOT SPAM (HAM)`.
+   * **Confidence:** Probability scores from the model (e.g., `Spam: 0.87`, `Ham: 0.13`).
 
-View Results: The classification ("SPAM!" or "NOT SPAM (HAM)") and confidence scores will be displayed below the input area.
+---
 
-📊 Model Details
-The core of the classifier is a StackingClassifier from scikit-learn. This ensemble model typically consists of:
+## 📂 Project Structure
 
-Base Estimators:
+A suggested layout (yours may vary):
 
-sklearn.svm.SVC (Support Vector Classifier)
+```
+Email-SMS-Spam-Classifier/
+├─ app.py                     # Streamlit app entry point
+├─ preprocess.py              # (Optional) Text cleaning utilities
+├─ train_model.ipynb          # (Optional) Notebook to train vectorizer + model
+├─ data/
+│  ├─ raw/                    # Original dataset(s)
+│  ├─ processed/              # Cleaned data / splits
+├─ models/
+│  ├─ vectorizer.pkl          # TF-IDF vectorizer (copy to root if app expects root)
+│  ├─ model.pkl               # StackingClassifier (copy to root if app expects root)
+├─ examples/
+│  ├─ spam_examples.txt
+│  ├─ ham_examples.txt
+├─ requirements.txt
+├─ LICENSE
+└─ README.md
+```
 
-sklearn.naive_bayes.MultinomialNB (Multinomial Naive Bayes)
 
-sklearn.ensemble.ExtraTreesClassifier (Extra Trees Classifier)
+## 🧩 Troubleshooting
 
-Final Estimator (Meta-model):
+### 1. **`NotFittedError` in MultinomialNB or other models**
 
-sklearn.ensemble.RandomForestClassifier (Random Forest Classifier)
+This typically means your model (or a base learner inside the StackingClassifier) was **not fitted** before being pickled/used. Confirm that you called `.fit()` on the full pipeline and that you're loading the correct artifact.
 
-The text features are generated using TfidfVectorizer.
+**Checklist:**
 
-🤝 Contributing
-Contributions are welcome! If you have suggestions for improvements, bug fixes, or new features, please open an issue or submit a pull request.
+* Did training complete successfully without errors?
+* Are you loading the same versions of scikit-learn used during training?
+* Did you save and load the **trained** estimator (not just an uninitialized instance)?
 
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details. (You might want to create a LICENSE file in your repo if you haven't already)
+### 2. **PowerShell `ExecutionPolicy` prevents venv activation**
 
-🙏 Acknowledgements
-Built with Streamlit.
+If you see an error like `running scripts is disabled on this system`, set an execution policy for the current user:
 
-Leverages scikit-learn for machine learning models.
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
 
-Utilizes NLTK for natural language processing tasks.
+Then re-run:
 
-Inspired by various online tutorials and resources on spam classification.
+```powershell
+.\venv\Scripts\Activate
+```
+
+(You may need to start a new PowerShell session.)
+
+### 3. **Missing NLTK Data**
+
+If the app errors on stopwords or punkt:
+
+```bash
+python -m nltk.downloader stopwords punkt
+```
+
+Or add a runtime downloader in code (see `app.py` example).
+
+### 4. **Missing `vectorizer.pkl` / `model.pkl`**
+
+The app will stop and show an error. Make sure the files exist in the expected path.
+
+### 5. **Memory Issues with Dense Conversion**
+
+Large vocabularies + dense conversion → big arrays. Consider:
+
+* Limiting `max_features` in `TfidfVectorizer`.
+* Using `LinearSVC` via `CalibratedClassifierCV` (dense but fewer features after chi2 select).
+* Dropping dense-unfriendly base learners.
+
+---
+
+## 🌱 Extending the App
+
+Ideas to grow the project:
+
+* Add **model training mode** in-app (upload CSV, train, download artifacts).
+* Track **prediction history** and allow user feedback (correct/incorrect) for active learning.
+* Add **explainability**: show top weighted words for Spam/Ham decisions.
+* Support **multilingual spam detection** (switch language stopwords/models).
+* Add **REST API** layer (FastAPI) behind the Streamlit UI.
+* Containerize with **Docker** for reproducibility.
+* Deploy to **Streamlit Community Cloud**, **Railway**, or **Azure App Service**.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome — bug reports, feature requests, docs improvements, refactors, or new training scripts.
+
+**To contribute:**
+
+1. Fork the repo.
+2. Create a feature branch: `git checkout -b feature/my-improvement`.
+3. Make your changes & add tests if applicable.
+4. Lint/format (`ruff`, `black`, `isort` suggested but optional).
+5. Commit & push.
+6. Open a Pull Request describing your change.
+
+Please open an Issue first for large changes or model refactors.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**. See the `LICENSE` file for details.
+
+*Example MIT boilerplate:*
+
+```txt
+MIT License
+
+Copyright (c) 2025 Anish Kumar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 🙏 Acknowledgements
+
+* Built with **[Streamlit](https://streamlit.io/)**.
+* Machine learning powered by **[scikit-learn](https://scikit-learn.org/)**.
+* Text processing via **[NLTK](https://www.nltk.org/)**.
+* Inspired by open datasets and community spam/ham tutorials.
+
+---
+
+## 📬 Contact
+
+**Author:** Anish (replace with full name if desired)
+**GitHub:** *add your profile link*
+**Email:** *optional*
+
+If you use this project in teaching, please let me know — I'd love to see how you extend it!
+
+---
+
+### Badge Ideas (Optional)
+
+Add these at the top of the README once you wire up CI/tools:
+
+```markdown
+![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)
+![Streamlit](https://img.shields.io/badge/streamlit-app-brightgreen)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+```
+
+---
+
+**Happy classifying!** 🚀
