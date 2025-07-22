@@ -343,9 +343,9 @@ SOFTWARE.
 
 ## 📬 Contact
 
-**Author:** Anish (replace with full name if desired)
-**GitHub:** *add your profile link*
-**Email:** *optional*
+**Author:** Anish kumar
+**GitHub:** **
+**Email:** 
 
 If you use this project in teaching, please let me know — I'd love to see how you extend it!
 
